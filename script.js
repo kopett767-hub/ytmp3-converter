@@ -20,8 +20,8 @@
 
 // ===================== CONFIG =====================
 const CONFIG = {
-    API_BASE: '/api',          // Ganti dengan URL API backend Anda
-    DEMO_MODE: true,           // Set false saat backend siap
+    API_BASE: '/api',
+    DEMO_MODE: false,
     HISTORY_KEY: 'ytmp3_history',
     DARKMODE_KEY: 'ytmp3_darkmode',
     MAX_HISTORY: 20,
