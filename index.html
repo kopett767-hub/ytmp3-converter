@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="id" x-data="app()" :class="{ 'dark': darkMode }">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="YouTube to MP3 Converter - Konversi video YouTube ke MP3 berkualitas tinggi secara gratis, cepat, dan aman.">
+    <meta name="keywords" content="youtube to mp3, converter mp3, download mp3, youtube converter, mp3 downloader">
+    <meta name="author" content="YTMP3 Converter">
+    <meta name="robots" content="index, follow">
+    <!-- Open Graph -->
+    <meta property="og:title" content="YouTube to MP3 Converter | Gratis & Cepat">
+    <meta property="og:description" content="Konversi video YouTube ke MP3 berkualitas tinggi. Gratis, cepat, tanpa iklan mengganggu.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ytmp3.example.com">
+    <meta property="og:image" content="https://ytmp3.example.com/og-image.png">
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="YouTube to MP3 Converter">
+    <meta name="twitter:description" content="Konversi YouTube ke MP3 secara gratis dan cepat.">
+
+    <title>YouTube to MP3 Converter | Gratis, Cepat & Berkualitas</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50:'#eff6ff',100:'#dbeafe',200:'#bfdbfe',300:'#93c5fd',400:'#60a5fa',500:'#3b82f6',600:'#2563eb',700:'#1d4ed8',800:'#1e40af',900:'#1e3a8a' },
+                        accent: { 50:'#faf5ff',100:'#f3e8ff',200:'#e9d5ff',300:'#d8b4fe',400:'#c084fc',500:'#a855f7',600:'#9333ea',700:'#7e22ce',800:'#6b21a8',900:'#581c87' }
+                    },
+                    animation: {
+                        'float':'float 6s ease-in-out infinite',
+                        'pulse-slow':'pulse 3s cubic-bezier(.4,0,.6,1) infinite',
+                        'slide-up':'slideUp .5s ease-out forwards',
+                        'fade-in':'fadeIn .4s ease-out forwards',
+                        'bounce-in':'bounceIn .6s ease-out forwards',
+                        'shimmer':'shimmer 2s linear infinite'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body class="bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300 min-h-screen flex flex-col">
+
+    <!-- ==================== NOTIFICATION TOAST ==================== -->
+    <div x-show="notification.show" x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 translate-y-[-20px]"
+         x-transition:enter-end="opacity-100 translate-y-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100 translate-y-0"
+         x-transition:leave-end="opacity-0 translate-y-[-20px]"
+         class="fixed top-20 right-4 z-[100] max-w-sm w-full"
+         :class="{ 'pointer-events-none': !notification.show }">
+        <div class="rounded-xl shadow-2xl p-4 backdrop-blur-sm border"
+             :class="notification.type === 'success' ? 'bg-green-50/95 dark:bg-green-900/90 border-green-200 dark:border-green-700' : 'bg-red-50/95 dark:bg-red-900/90 border-red-200 dark:border-red-700'">
+            <div class="flex items-start gap-3">
+                <div class="shrink-0 mt-0.5"
+                     :class="notification.type === 'success' ? 'text-green-500' : 'text-red-500'">
+                    <i data-lucide="check-circle" class="w-5 h-5" x-show="notification.type === 'success'"></i>
+                    <i data-lucide="alert-circle" class="w-5 h-5" x-show="notification.type === 'error'"></i>
+                </div>
+                <div>
+                    <p class="font-semibold text-sm"
+                       :class="notification.type === 'success' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'"
+                       x-text="notification.title"></p>
+                    <p class="text-sm mt-0.5"
+                       :class="notification.type === 'success' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'"
+                       x-text="notification.message"></p>
+                </div>
+                <button @click="notification.show = false" class="shrink-0 ml-auto hover:opacity-70">
+                    <i data-lucide="x" class="w-4 h-4 text-gray-500"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== NAVBAR ==================== -->
+    <nav class="fixed top-0 inset-x-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 dark:border-gray-800/50 transition-all duration-300"
+         :class="scrolled ? 'shadow-lg shadow-gray-200/20 dark:shadow-black/20' : ''" id="navbar">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="#" class="flex items-center gap-2.5 group">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/30 group-hover:shadow-primary-500/50 transition-shadow">
+                        <i data-lucide="music" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-primary-600 to-accent-600 dark:from-primary-400 dark:to-accent-400 bg-clip-text text-transparent">
+                        YTMP3
+                    </span>
+                </a>
+
+                <!-- Desktop Menu -->
+                <div class="hidden md:flex items-center gap-1">
+                    <a href="#converter" class="nav-link px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Converter</a>
+                    <a href="#history" class="nav-link px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Riwayat</a>
+                    <a href="#faq" class="nav-link px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">FAQ</a>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <!-- Dark Mode Toggle -->
+                    <button @click="toggleDarkMode()" class="relative w-14 h-7 rounded-full bg-gray-200 dark:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 p-0 border-none cursor-pointer" aria-label="Toggle dark mode">
+                        <div class="absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-md flex items-center justify-center transition-transform duration-300"
+                             :class="darkMode ? 'translate-x-7' : 'translate-x-0'">
+                            <i data-lucide="sun" class="w-3.5 h-3.5 text-amber-500" x-show="!darkMode"></i>
+                            <i data-lucide="moon" class="w-3.5 h-3.5 text-primary-500" x-show="darkMode"></i>
+                        </div>
+                    </button>
+
+                    <!-- Mobile Menu -->
+                    <button @click="mobileMenu = !mobileMenu" class="md:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" aria-label="Menu">
+                        <i data-lucide="menu" class="w-5 h-5" x-show="!mobileMenu"></i>
+                        <i data-lucide="x" class="w-5 h-5" x-show="mobileMenu"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div x-show="mobileMenu" x-transition.opacity @click="mobileMenu = false" class="fixed inset-0 bg-black/50 z-40 md:hidden" style="display:none;"></div>
+    <!-- Mobile Menu Panel -->
+    <div x-show="mobileMenu" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0 -translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" x-transition:leave="transition ease-in duration-150" x-transition:leave-start="opacity-100 translate-y-0" x-transition:leave-end="opacity-0 -translate-y-4" class="fixed top-16 inset-x-0 z-49 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 p-4 md:hidden shadow-xl" style="display:none;">
+        <div class="flex flex-col gap-1">
+            <a href="#converter" @click="mobileMenu=false" class="px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">🎵 Converter</a>
+            <a href="#history" @click="mobileMenu=false" class="px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">📋 Riwayat</a>
+            <a href="#faq" @click="mobileMenu=false" class="px-4 py-3 rounded-lg text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">❓ FAQ</a>
+        </div>
+    </div>
+
+    <!-- ==================== HERO SECTION ==================== -->
+    <section id="converter" class="pt-28 pb-16 md:pt-36 md:pb-24 relative overflow-hidden">
+        <!-- Background decoration -->
+        <div class="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
+            <div class="absolute -top-40 -right-40 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-primary-400/20 to-accent-400/20 blur-3xl animate-pulse-slow"></div>
+            <div class="absolute -bottom-40 -left-40 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-accent-400/15 to-primary-400/15 blur-3xl animate-pulse-slow" style="animation-delay:1s"></div>
+        </div>
+
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+            <!-- Badge -->
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 text-primary-700 dark:text-primary-300 text-xs font-semibold mb-6 animate-fade-in">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                100% Gratis & Tanpa Iklan
+            </div>
+
+            <!-- Title -->
+            <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight animate-slide-up">
+                <span class="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 dark:from-white dark:via-gray-100 dark:to-white bg-clip-text text-transparent">Konversi YouTube</span><br>
+                <span class="bg-gradient-to-r from-primary-600 to-accent-600 bg-clip-text text-transparent">ke MP3 Berkualitas</span>
+            </h1>
+
+            <p class="mt-5 text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto animate-fade-in" style="animation-delay:.2s">
+                Download audio MP3 dari video YouTube dengan kualitas tinggi. Cepat, aman, tanpa batas &mdash; langsung dari browser Anda.
+            </p>
+
+            <!-- URL Input Area -->
+            <div class="mt-10 max-w-2xl mx-auto animate-fade-in" style="animation-delay:.3s">
+                <div class="relative group">
+                    <div class="absolute -inset-1 bg-gradient-to-r from-primary-500 to-accent-500 rounded-2xl blur-lg opacity-20 group-hover:opacity-30 transition-opacity duration-500"></div>
+                    <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-2">
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <div class="relative flex-1">
+                                <div class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <i data-lucide="link" class="w-5 h-5"></i>
+                                </div>
+                                <input type="url" x-model="youtubeUrl" @keyup.enter="convertVideo()"
+                                       placeholder="Tempel URL YouTube di sini..."
+                                       class="w-full pl-11 pr-4 py-3.5 rounded-xl bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-400 text-base font-medium ring-2 ring-transparent focus:ring-primary-500/30 transition-shadow" id="urlInput">
+                            </div>
+                            <button @click="convertVideo()" :disabled="isLoading"
+                                    class="px-8 py-3.5 rounded-xl bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-700 hover:to-accent-700 text-white font-semibold text-base shadow-lg shadow-primary-500/30 hover:shadow-primary-500/50 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 whitespace-nowrap transform hover:scale-[1.02] active:scale-[0.98]">
+                                <template x-if="!isLoading">
+                                    <span class="flex items-center gap-2">
+                                        <i data-lucide="download" class="w-5 h-5"></i>
+                                        Convert to MP3
+                                    </span>
+                                </template>
+                                <template x-if="isLoading">
+                                    <span class="flex items-center gap-2">
+                                        <svg class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                        Memproses...
+                                    </span>
+                                </template>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <p class="mt-3 text-xs text-gray-500 dark:text-gray-500 flex items-center justify-center gap-1.5">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-green-500"></i>
+                    Aman & privasi terjaga &mdash; kami tidak menyimpan data Anda
+                </p>
+            </div>
+
+            <!-- Supported platforms -->
+            <div class="mt-8 flex items-center justify-center gap-6 text-gray-400 animate-fade-in" style="animation-delay:.4s">
+                <div class="flex items-center gap-1.5 text-xs">
+                    <i data-lucide="youtube" class="w-4 h-4 text-red-500"></i> YouTube
+                </div>
+                <div class="flex items-center gap-1.5 text-xs">
+                    <i data-lucide="music" class="w-4 h-4 text-primary-500"></i> MP3 320kbps
+                </div>
+                <div class="hidden sm:flex items-center gap-1.5 text-xs">
+                    <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i> Instan
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== CONVERSION RESULT AREA ==================== -->
+    <section class="pb-16 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div x-show="showResult" x-transition:enter="transition ease-out duration-500" x-transition:enter-start="opacity-0 translate-y-8" x-transition:enter-end="opacity-100 translate-y-0" style="display:none;">
+
+            <!-- Video Info Card -->
+            <div x-show="videoInfo && !isConverting && conversionDone" x-transition class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 overflow-hidden animate-bounce-in">
+                <div class="flex flex-col md:flex-row">
+                    <!-- Thumbnail -->
+                    <div class="md:w-72 shrink-0 relative group">
+                        <img :src="videoInfo?.thumbnail" alt="Video thumbnail" class="w-full h-48 md:h-full object-cover" loading="lazy">
+                        <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span class="bg-white/90 text-gray-900 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1">
+                                <i data-lucide="play" class="w-3 h-3"></i>
+                                <span x-text="videoInfo?.duration"></span>
+                            </span>
+                        </div>
+                        <div class="absolute bottom-2 right-2 bg-black/80 text-white text-xs font-medium px-2 py-0.5 rounded-md" x-text="videoInfo?.duration"></div>
+                    </div>
+                    <!-- Info -->
+                    <div class="flex-1 p-5 md:p-6">
+                        <h3 class="font-bold text-lg leading-snug line-clamp-2" x-text="videoInfo?.title"></h3>
+                        <div class="flex items-center gap-3 mt-3 text-sm text-gray-500 dark:text-gray-400">
+                            <span class="flex items-center gap-1">
+                                <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                                <span x-text="videoInfo?.duration"></span>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i data-lucide="headphones" class="w-3.5 h-3.5"></i>
+                                MP3 320kbps
+                            </span>
+                        </div>
+                        <!-- Download Button -->
+                        <button @click="downloadMp3()"
+                                class="mt-4 w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all duration-300 flex items-center justify-center gap-2 transform hover:scale-[1.02] active:scale-[0.98]">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                            Download MP3
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div x-show="isConverting" x-transition class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
+                <div class="flex items-center gap-4 mb-5">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center animate-pulse">
+                        <i data-lucide="loader-2" class="w-6 h-6 text-white animate-spin"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-base">Mengonversi ke MP3...</h4>
+                        <p class="text-sm text-gray-500 dark:text-gray-400" x-text="progressText"></p>
+                    </div>
+                </div>
+                <!-- Progress -->
+                <div class="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full transition-all duration-500 ease-out relative"
+                         :style="{ width: progress + '%' }">
+                        <div class="absolute inset-0 bg-white/20 animate-shimmer rounded-full"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between mt-2 text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    <span x-text="progress + '%'"></span>
+                    <span x-text="progressText"></span>
+                </div>
+            </div>
+
+            <!-- Success Card -->
+            <div x-show="conversionDone && !isConverting && !videoInfo" x-transition class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-green-200 dark:border-green-800 p-6 md:p-8 text-center animate-bounce-in">
+                <div class="w-16 h-16 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
+                    <i data-lucide="check-circle" class="w-8 h-8 text-green-500"></i>
+                </div>
+                <h3 class="font-bold text-xl">Konversi Berhasil!</h3>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">File MP3 Anda siap di-download.</p>
+                <button @click="downloadMp3()" class="mt-5 px-8 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 mx-auto">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                    Download MP3
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== CONVERSION HISTORY ==================== -->
+    <section id="history" class="py-16 bg-gray-100/50 dark:bg-gray-900/50">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h2 class="text-2xl sm:text-3xl font-bold">Riwayat Konversi</h2>
+                    <p class="text-gray-500 dark:text-gray-400 mt-1">Konversi terbaru Anda</p>
+                </div>
+                <button x-show="history.length > 0" @click="clearHistory()" class="text-sm text-red-500 hover:text-red-600 font-medium flex items-center gap-1 transition-colors">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    Hapus Semua
+                </button>
+            </div>
+
+            <!-- Empty State -->
+            <div x-show="history.length === 0" class="text-center py-12">
+                <div class="w-20 h-20 mx-auto rounded-2xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center mb-4">
+                    <i data-lucide="clock" class="w-8 h-8 text-gray-400"></i>
+                </div>
+                <h3 class="font-semibold text-lg text-gray-600 dark:text-gray-400">Belum ada riwayat</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-500 mt-1">Mulai konversi untuk melihat riwayat di sini</p>
+            </div>
+
+            <!-- History List -->
+            <div x-show="history.length > 0" class="space-y-3">
+                <template x-for="(item, index) in history" :key="index">
+                    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 flex items-center gap-4 hover:shadow-md transition-shadow group">
+                        <img :src="item.thumbnail" alt="thumb" class="w-16 h-12 rounded-lg object-cover shrink-0" loading="lazy">
+                        <div class="flex-1 min-w-0">
+                            <h4 class="font-semibold text-sm truncate" x-text="item.title"></h4>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5" x-text="item.date"></p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <span class="text-xs text-gray-400 hidden sm:inline" x-text="item.duration"></span>
+                            <button @click="redownload(item)" class="px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-xs font-semibold hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors flex items-center gap-1">
+                                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                                Download
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== FAQ SECTION ==================== -->
+    <section id="faq" class="py-16 lg:py-24">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-2xl sm:text-3xl font-bold">Pertanyaan Umum</h2>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">Temukan jawaban untuk pertanyaan yang sering diajukan</p>
+            </div>
+            <div class="space-y-3">
+                <template x-for="(item, index) in faqs" :key="index">
+                    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+                        <button @click="item.open = !item.open"
+                                class="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
+                            <span class="font-semibold text-sm pr-4" x-text="item.q"></span>
+                            <i data-lucide="chevron-down" class="w-5 h-5 shrink-0 text-gray-400 transition-transform duration-300" :class="item.open && 'rotate-180'"></i>
+                        </button>
+                        <div x-show="item.open" x-collapse x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100">
+                            <div class="px-5 pb-5 text-sm text-gray-600 dark:text-gray-400 leading-relaxed border-t border-gray-100 dark:border-gray-800 pt-4" x-text="item.a"></div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </section>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer class="bg-gray-900 dark:bg-black text-gray-400 py-12 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
+                <!-- Brand -->
+                <div class="md:col-span-2">
+                    <div class="flex items-center gap-2.5 mb-4">
+                        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                            <i data-lucide="music" class="w-4 h-4 text-white"></i>
+                        </div>
+                        <span class="font-bold text-white text-lg">YTMP3 Converter</span>
+                    </div>
+                    <p class="text-sm leading-relaxed max-w-sm">
+                        Konverter YouTube ke MP3 terbaik yang gratis, cepat, dan berkualitas tinggi. Tanpa batas konversi, tanpa iklan mengganggu.
+                    </p>
+                </div>
+                <!-- Links -->
+                <div>
+                    <h4 class="font-semibold text-white text-sm mb-4">Navigasi</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#converter" class="hover:text-white transition-colors">Converter</a></li>
+                        <li><a href="#history" class="hover:text-white transition-colors">Riwayat</a></li>
+                        <li><a href="#faq" class="hover:text-white transition-colors">FAQ</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-white text-sm mb-4">Legal</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-white transition-colors">Kebijakan Privasi</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">Syarat & Ketentuan</a></li>
+                        <li><a href="#" class="hover:text-white transition-colors">DMCA</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <p class="text-xs">&copy; <span x-text="new Date().getFullYear()"></span> YTMP3 Converter. All rights reserved.</p>
+                <div class="flex items-center gap-4">
+                    <a href="#" class="hover:text-white transition-colors" aria-label="Twitter"><i data-lucide="twitter" class="w-4 h-4"></i></a>
+                    <a href="#" class="hover:text-white transition-colors" aria-label="GitHub"><i data-lucide="github" class="w-4 h-4"></i></a>
+                    <a href="#" class="hover:text-white transition-colors" aria-label="Email"><i data-lucide="mail" class="w-4 h-4"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==================== BACK TO TOP ==================== -->
+    <button x-show="scrolled" @click="window.scrollTo({top:0,behavior:'smooth'})"
+            x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 scale-75" x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-200" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-75"
+            class="fixed bottom-6 right-6 z-50 w-11 h-11 rounded-full bg-primary-600 hover:bg-primary-700 text-white shadow-lg shadow-primary-500/30 flex items-center justify-center transition-all transform hover:scale-110" aria-label="Back to top">
+        <i data-lucide="chevron-up" class="w-5 h-5"></i>
+    </button>
+
+    <script src="script.js"></script>
+</body>
+</html>
