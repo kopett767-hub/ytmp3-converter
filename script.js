@@ -20,7 +20,7 @@
 
 // ===================== CONFIG =====================
 const CONFIG = {
-    API_BASE: 'https://bgz123-ytmp3-converter.hf.space/api',
+    API_BASE: '/api',
     DEMO_MODE: false,
     HISTORY_KEY: 'ytmp3_history',
     DARKMODE_KEY: 'ytmp3_darkmode',
