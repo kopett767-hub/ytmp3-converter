@@ -23,12 +23,224 @@
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎵</text></svg>">
 
-    
-    
-    
-    
+<script>
+// ===================== CONFIG =====================
+const CONFIG = {
+    API_BASE: window.location.origin,
+    DEMO_MODE: false,
+    HISTORY_KEY: 'ytmp3_history',
+    DARKMODE_KEY: 'ytmp3_dark',
+    MAX_HISTORY: 20,
+};
 
-    
+// ===================== API LAYER =====================
+const api = {
+    async fetchVideoInfo(url) {
+        const res = await fetch(CONFIG.API_BASE + '/api/info?url=' + encodeURIComponent(url));
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Gagal mengambil info video');
+        }
+        return res.json();
+    },
+    async convertVideo(url) {
+        const res = await fetch(CONFIG.API_BASE + '/api/convert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Gagal memulai konversi');
+        }
+        return res.json();
+    },
+    async checkStatus(jobId) {
+        const res = await fetch(CONFIG.API_BASE + '/api/status/' + jobId);
+        if (!res.ok) throw new Error('Gagal cek status');
+        return res.json();
+    },
+    getDownloadUrl(jobId) {
+        return CONFIG.API_BASE + '/api/download/' + jobId;
+    },
+};
+
+// ===================== ALPINE APP =====================
+function app() {
+    return {
+        darkMode: false,
+        scrolled: false,
+        mobileMenu: false,
+        youtubeUrl: '',
+        showResult: false,
+        videoInfo: null,
+        isLoading: false,
+        isConverting: false,
+        conversionDone: false,
+        progress: 0,
+        progressText: '',
+        currentJobId: null,
+        history: [],
+        notification: { show: false, type: '', title: '', message: '' },
+
+        init() {
+            const saved = localStorage.getItem(CONFIG.DARKMODE_KEY);
+            this.darkMode = saved !== null ? saved === 'true' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+            try { this.history = JSON.parse(localStorage.getItem(CONFIG.HISTORY_KEY) || '[]'); } catch { this.history = []; }
+            window.addEventListener('scroll', () => { this.scrolled = window.scrollY > 50; });
+            this.$nextTick(() => lucide.createIcons());
+        },
+
+        toggleDark() {
+            this.darkMode = !this.darkMode;
+            localStorage.setItem(CONFIG.DARKMODE_KEY, this.darkMode);
+            this.$nextTick(() => lucide.createIcons());
+        },
+
+        isValidYouTubeUrl(url) {
+            const patterns = [
+                /^(https?:\/\/)?(www\.)?youtube\.com\/watch\?v=[\w-]{11}/,
+                /^(https?:\/\/)?(www\.)?youtu\.be\/[\w-]{11}/,
+                /^(https?:\/\/)?(www\.)?youtube\.com\/shorts\/[\w-]{11}/,
+                /^(https?:\/\/)?(www\.)?youtube\.com\/embed\/[\w-]{11}/,
+            ];
+            return patterns.some(p => p.test(url.trim()));
+        },
+
+        async convertVideo() {
+            const url = this.youtubeUrl.trim();
+            if (!url) {
+                this.notify('error', 'URL Kosong', 'Silakan masukkan URL YouTube terlebih dahulu.');
+                return;
+            }
+            if (!this.isValidYouTubeUrl(url)) {
+                this.notify('error', 'URL Tidak Valid', 'Pastikan URL yang dimasukkan adalah URL YouTube yang valid.');
+                return;
+            }
+
+            this.isLoading = true;
+            this.showResult = true;
+            this.conversionDone = false;
+            this.videoInfo = null;
+            this.progress = 0;
+
+            try {
+                this.progressText = 'Mengambil info video...';
+                this.videoInfo = await api.fetchVideoInfo(url);
+                this.$nextTick(() => lucide.createIcons());
+
+                this.isLoading = false;
+                this.isConverting = true;
+                const { jobId } = await api.convertVideo(url);
+                this.currentJobId = jobId;
+
+                if (CONFIG.DEMO_MODE) {
+                    await this._simulateProgress();
+                } else {
+                    await this._pollProgress(jobId);
+                }
+
+                this.isConverting = false;
+                this.conversionDone = true;
+                this.progress = 100;
+                this.progressText = 'Selesai!';
+
+                this._addToHistory({
+                    title: this.videoInfo.title,
+                    thumbnail: this.videoInfo.thumbnail,
+                    duration: this.videoInfo.duration,
+                    date: new Date().toLocaleString('id-ID'),
+                    jobId: this.currentJobId,
+                });
+
+                this.notify('success', 'Konversi Berhasil!', 'File MP3 Anda siap di-download.');
+            } catch (err) {
+                this.isLoading = false;
+                this.isConverting = false;
+                this.notify('error', 'Konversi Gagal', err.message || 'Terjadi kesalahan. Silakan coba lagi.');
+            }
+            this.$nextTick(() => lucide.createIcons());
+        },
+
+        async _simulateProgress() {
+            const steps = [
+                { p: 15, t: 'Mengunduh video...' },
+                { p: 35, t: 'Mengekstrak audio...' },
+                { p: 55, t: 'Mengonversi ke MP3...' },
+                { p: 75, t: 'Mengoptimasi kualitas...' },
+                { p: 90, t: 'Menyelesaikan...' },
+                { p: 100, t: 'Selesai!' },
+            ];
+            for (const step of steps) {
+                await _sleep(600 + Math.random() * 400);
+                this.progress = step.p;
+                this.progressText = step.t;
+            }
+        },
+
+        async _pollProgress(jobId) {
+            return new Promise((resolve, reject) => {
+                const interval = setInterval(async () => {
+                    try {
+                        const status = await api.checkStatus(jobId);
+                        if (status.status === 'completed') {
+                            this.progress = 100;
+                            this.progressText = 'Selesai!';
+                            clearInterval(interval);
+                            resolve();
+                        } else if (status.status === 'failed') {
+                            clearInterval(interval);
+                            reject(new Error('Konversi gagal di server'));
+                        } else {
+                            this.progress = status.progress || 0;
+                            this.progressText = status.message || 'Memproses...';
+                        }
+                    } catch (err) {
+                        clearInterval(interval);
+                        reject(err);
+                    }
+                }, 1000);
+            });
+        },
+
+        downloadMp3() {
+            if (CONFIG.DEMO_MODE) {
+                this.notify('success', 'Demo Mode', 'Download akan berfungsi saat backend terhubung.');
+                return;
+            }
+            window.open(api.getDownloadUrl(this.currentJobId), '_blank');
+        },
+
+        redownload(item) {
+            if (CONFIG.DEMO_MODE) {
+                this.notify('success', 'Demo Mode', 'Download akan berfungsi saat backend terhubung.');
+                return;
+            }
+            window.open(api.getDownloadUrl(item.jobId), '_blank');
+        },
+
+        _addToHistory(item) {
+            this.history.unshift(item);
+            if (this.history.length > CONFIG.MAX_HISTORY) {
+                this.history = this.history.slice(0, CONFIG.MAX_HISTORY);
+            }
+            localStorage.setItem(CONFIG.HISTORY_KEY, JSON.stringify(this.history));
+        },
+
+        clearHistory() {
+            this.history = [];
+            localStorage.removeItem(CONFIG.HISTORY_KEY);
+            this.notify('success', 'Riwayat Dihapus', 'Semua riwayat konversi telah dihapus.');
+        },
+
+        notify(type, title, message) {
+            this.notification = { show: true, type, title, message };
+            this.$nextTick(() => lucide.createIcons());
+            setTimeout(() => { this.notification.show = false; }, 4000);
+        },
+    };
+}
+</script>
 <style>/* ============================================================
    YTMP3 Converter — Custom Styles
    Modern, minimal, SaaS-style design
