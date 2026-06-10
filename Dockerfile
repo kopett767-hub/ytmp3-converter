@@ -2,28 +2,23 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install ffmpeg + dependencies
+# Install ffmpeg
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip + install dependencies
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy application
-COPY api/ ./api/
-COPY index.html ./index.html
-COPY styles.css ./styles.css
-COPY script.js ./script.js
+# Copy ALL files from repo
+COPY . .
 
-# Hugging Face uses PORT env
+# Hugging Face uses PORT 7860
 ENV PORT=7860
-
-# Expose port
 EXPOSE 7860
 
 # Run
-CMD ["gunicorn", "api.index:app", "--bind", "0.0.0.0:7860", "--workers", "1", "--timeout", "300"]
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:7860", "--workers", "1", "--timeout", "300"]
